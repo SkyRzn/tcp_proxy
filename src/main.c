@@ -14,6 +14,9 @@
 		exit(-1); \
 	} while (0)
 
+#define LOCAL_MASK  1
+#define REMOTE_MASK 2
+
 
 typedef struct {
 	struct sockaddr_in local;
@@ -182,23 +185,35 @@ static void signal_handler(int signal)
 
 static int parse_args(int argc, char *argv[])
 {
-	int opt;
+	int opt, presented = 0;
 
 	while ((opt = getopt(argc, argv, "l:d:")) != -1)
 		switch (opt) {
 			case 'l':
+				if (presented & LOCAL_MASK)
+					return -EINVAL;
+
 				if (parse_addr(&options.local, optarg) != 0)
 					err_exit("Incorrect proxy address\n");
+
+				presented |= LOCAL_MASK;
+
 				break;
 			case 'd':
+				if (presented & REMOTE_MASK)
+					return -EINVAL;
+
 				if (parse_addr(&options.remote, optarg) != 0)
 					err_exit("Incorrect remote address\n");
+
+				presented |= REMOTE_MASK;
+
 				break;
 			default:
 				return -EINVAL;
 	}
 
-	return 0;
+	return (presented == (LOCAL_MASK | REMOTE_MASK)) ? 0 : -EINVAL;
 }
 
 static int parse_addr(struct sockaddr_in *sa, char *addr_str)
